@@ -35,7 +35,7 @@ old_sub_file_name = [
 
 new_sub_file_name = [
     [
-        sg.Text("old sub file name"),
+        sg.Text("new sub file name"),
         sg.Input(size=(25, 1), enable_events=True, key="-new_sub_file_name-")
     ]
 ]
@@ -72,6 +72,7 @@ while True:
         new_sub_file_name_str += values['-new_sub_file_name-']
 
         rename_file_in_directory(folder, old_sub_file_name_str, new_sub_file_name_str)
+        break
     if event == sg.WIN_CLOSED:
         break
 
