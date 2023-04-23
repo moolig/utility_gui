@@ -40,6 +40,9 @@ def remove_all_raw_from_b_if_in_a(a_file, b_file):
 
 
 
+
+
+
 file_a = [
     [
         sg.Text("file_a"),
