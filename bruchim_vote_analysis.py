@@ -52,7 +52,6 @@ def analysis(csv_input: str, res_dir: str):
     good_val = '100 / 100'
     not_relevant_column = [pin_filed, point_filed, 'חותמת זמן']
 
-
     df = pd.read_csv(csv_input, sep=",", encoding='utf-8')
     print('incurrect pins:', get_incorrect_pins(df, pin_filed, point_filed, good_val))
     print('duplicate pin:', get_duplicate_pin(df, pin_filed))
@@ -62,23 +61,16 @@ def analysis(csv_input: str, res_dir: str):
     create_graph(df, not_relevant_column, res_dir)
     df.to_csv(os.path.join(res_dir, 'csv_output.csv'))
 
-def analysis_from_google_sheet(url, res_dir):
-
-
-
-    df = pd.read_csv(url, on_bad_lines='skip')
-    print('incurrect pins:', get_incorrect_pins(df))
-    print('duplicate pin:', get_duplicate_pin(df))
-
-    df = remove_incoret_pin(df)
-    df = fusion_same_pin(df)
-
-
-    df.to_csv(os.path.join(res_dir, 'csv_output.csv'))
+# def analysis_from_google_sheet(url, res_dir):
+#     df = pd.read_csv(url, on_bad_lines='skip')
+#     print('incurrect pins:', get_incorrect_pins(df))
+#     print('duplicate pin:', get_duplicate_pin(df))
+#     df = remove_incoret_pin(df)
+#     df = fusion_same_pin(df)
+#     df.to_csv(os.path.join(res_dir, 'csv_output.csv'))
 
 
 if __name__ == '__main__':
-    # url = 'https://docs.google.com/spreadsheets/d/1bo2zlHKB-s3A_8PW-JwJCnHarOWGBHAI7zgTrVKYM_M/edit?resourcekey#gid=1688518393'
-    csv_output = r'C:\work_space\temp\res.csv'
-    # analysis_from_google_sheet(url, csv_output)
-    analysis(r'C:\Users\mooli\Downloads\test_2.csv', r'C:\work_space\temp')
+    csv = r'C:\Users\mooli\Downloads\test_2.csv'
+    output_dir = r'C:\work_space\temp'
+    analysis(csv, output_dir)
