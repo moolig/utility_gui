@@ -72,7 +72,7 @@ while True:
         new_sub_file_name_str += values['-new_sub_file_name-']
 
         rename_file_in_directory(folder, old_sub_file_name_str, new_sub_file_name_str)
-        break
+
     if event == sg.WIN_CLOSED:
         break
 

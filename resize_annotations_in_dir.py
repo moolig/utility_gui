@@ -17,9 +17,13 @@ def resize_annotations_in_dir(dir_in: str, dir_out, old_im_size, new_image_size)
         os.mkdir(dir_out)
     files = [f for f in os.listdir(dir_in)]
     for file in files:
-        annotations = Annotations(yolo_file=os.path.join(dir_in, file))
-        annotations.resize_im(old_im_size, new_image_size)
-        annotations.save_to_yolo_format(os.path.join(dir_out, file))
+        try:
+            annotations = Annotations(yolo_file=os.path.join(dir_in, file))
+            annotations.resize_im(old_im_size, new_image_size)
+            annotations.save_to_yolo_format(os.path.join(dir_out, file))
+        except Exception as e:
+            print(e)
+
 
 
 in_folder = [
@@ -62,7 +66,7 @@ layout = [
     ]
 ]
 
-window = sg.Window("rename_file_in_directory", layout)
+window = sg.Window("resize_annotations_in_dir", layout)
 
 # Create an event loop
 while True:
