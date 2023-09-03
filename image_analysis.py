@@ -4,6 +4,11 @@ from matplotlib import pyplot as plt
 from scipy.signal import savgol_filter
 from scipy.signal import argrelextrema
 from scipy import ndimage
+
+from scipy import signal
+from scipy import datasets
+from numpy.fft import fft2, ifft2
+
 import os
 
 
@@ -240,11 +245,20 @@ def bruth_forth(big_image, cropped_image):
     w, h = gray_cropped_image.shape
 
     cropped_bm = im_to_binary_im(gray_cropped_image, 3)
-
     big_bm = im_to_binary_im(gray_big_image, 5)
+
     kernel = np.ones((5, 5), np.uint8)
     big_bm = cv.dilate(big_bm, kernel, iterations=2)
     big_bm = cv.erode(big_bm, kernel, iterations=2)
+
+
+    '''
+    test revert to gray
+    '''
+    big_bm = gray_big_image
+    cropped_bm = gray_cropped_image
+    #-----------------------
+
 
     method = cv.TM_CCOEFF_NORMED
 
@@ -254,8 +268,12 @@ def bruth_forth(big_image, cropped_image):
     res_rotate = 0
     res_resize = 1
 
-    resize_time = 20
+    resize_time = 2
 
+    w = int(w * scale**13)
+    h = int(h * scale**13)
+    dim = (w, h)
+    cropped_bm = cv.resize(cropped_bm, dim, interpolation=cv.INTER_AREA)
     cropped_bm = cv.rotate(cropped_bm, cv.ROTATE_90_CLOCKWISE)
     cropped_bm = cv.rotate(cropped_bm, cv.ROTATE_90_CLOCKWISE)
 
@@ -263,7 +281,33 @@ def bruth_forth(big_image, cropped_image):
     for rsize in range(1,resize_time):
         for rotate in range(4):
             for flip in range(2):
-                res = cv.matchTemplate(big_bm, cropped_bm, method)
+
+
+                # res = cv.matchTemplate(big_bm, cropped_bm, method)
+
+
+                temp_im = cropped_bm - cropped_bm.mean()
+                res1 = signal.correlate2d(big_bm, temp_im, boundary='symm', mode='same')
+                res = res1
+                y, x = np.unravel_index(np.argmax(res1), res1.shape)  # find the match
+                fig, (ax_orig, ax_template, ax_corr) = plt.subplots(3, 1,
+                                                                    figsize=(6, 15))
+
+
+
+                ax_orig.imshow(big_bm, cmap='gray')
+                ax_orig.set_title('Original')
+                ax_orig.set_axis_off()
+                ax_template.imshow(cropped_bm, cmap='gray')
+                ax_template.set_title('Template')
+                ax_template.set_axis_off()
+                ax_corr.imshow(res1, cmap='gray')
+                ax_corr.set_title('Cross-correlation')
+                ax_corr.set_axis_off()
+                ax_orig.plot(x, y, 'ro')
+                fig.show()
+
+
 
                 min_val, max_val, min_loc, max_loc = cv.minMaxLoc(res)
                 if max_val > glob_max_val:
@@ -299,7 +343,7 @@ def bruth_forth(big_image, cropped_image):
             w, h = res_aoi_im.shape
             cv.rectangle(gray_big_image, res_max_loc, (res_max_loc[0] + w, res_max_loc[1] + h), (255), 1)
             img3 = cv.drawMatches(gray_big_image, [], res_aoi_im, [], [], None)
-            # plt.imshow(img3, 'gray'), plt.show()
+            plt.imshow(img3, 'gray'), plt.show()
             cv.imwrite(os.path.join(r'C:\work_space\Temp\res', os.path.basename(big_image)), img3)
 
 
@@ -311,7 +355,7 @@ def bruth_forth(big_image, cropped_image):
 
 if __name__ == '__main__':
 
-    for i in range(0,20458):
+    for i in range(2,3):#(0,20458):
         try:
             aoi_path = fr'C:\work_space\Temp\Export_29_08_23_36_19_0\{i}_Image.png'
             video_path = fr'C:\work_space\Temp\Export_29_08_23_36_19_0\{i}_Video.png'
