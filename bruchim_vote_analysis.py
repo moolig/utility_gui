@@ -58,6 +58,10 @@ def analysis(csv_input: str, res_dir: str):
     print('incurrect pins:', get_incorrect_pins(df, pin_filed, point_filed, good_val))
     print('duplicate pin:', get_duplicate_pin(df, pin_filed))
 
+    with open(os.path.join(res_dir, 'incorrect_pins.txt'), 'w') as the_file:
+        the_file.write(f'incorrect pins: {get_incorrect_pins(df, pin_filed, point_filed, good_val)}\n')
+        the_file.write(f'duplicate pin:{get_duplicate_pin(df, pin_filed)}\n')
+
     df = remove_incoret_pin(df, point_filed, good_val)
     df = fusion_same_pin(df, pin_filed)
     create_graph(df, not_relevant_column, res_dir)
@@ -73,6 +77,6 @@ def analysis(csv_input: str, res_dir: str):
 
 
 if __name__ == '__main__':
-    csv = r'C:\work_space\temp\k.csv'
-    output_dir = r'C:\work_space\temp\t3'
+    csv = r'C:\work_space\temp\kamin_2\input.csv'
+    output_dir = r'C:\work_space\temp\kamin_2'
     analysis(csv, output_dir)

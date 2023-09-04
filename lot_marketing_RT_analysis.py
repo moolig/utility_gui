@@ -110,26 +110,27 @@ def analysis(csv_input: str, res_dir: str):
 
     df = df.reset_index()  # make sure indexes pair with number of rows
 
+
     for index, row in df.iterrows():
         if row[st_live_in_goln] == st_yes or row[st_live_in_north] == st_yes:
-            row[st_live_in_north_res] = 1
+            df[st_live_in_north_res] = 1
 
         if row[st_is_family] == st_is_parent:
-            row[st_family_close_res] = 4
+            df[st_family_close_res][index] = 4
         elif row[st_is_family] == st_is_brother:
-            row[st_family_close_res] = 1
+            df[st_family_close_res][index] = 1
 
         if row[st_children_num] == st_more_from_3:
-            row[st_children_num_res] = 3
+            df[st_children_num_res][index] = 3
         else:
-            row[st_children_num_res] = int(row[st_children_num])
+            df[st_children_num_res][index] = int(row[st_children_num])
 
-        row[st_relevant_age_res] = len(str(row[st_relevant_age]).split(','))
+        df[st_relevant_age_res] = len(str(row[st_relevant_age]).split(','))
 
         if row[st_age] == '+50' and row[st_is_family] != st_is_parent:
-            row[st_family_situation_res] = 3
+            df[st_family_situation_res][index] = 3
         elif row[st_age] == '18-37' and row[st_family_situation] == st_couple_no_child:
-            row[st_family_situation_res] = 3
+            df[st_family_situation_res][index] = 3
 
         complex_conected_points = 0
         if row[st_live_in_complex_rliges] == st_yes_both:
@@ -163,7 +164,12 @@ def analysis(csv_input: str, res_dir: str):
         elif row[st_complex_frame] == st_yes_one:
             complex_conected_points += 1
 
-        row[st_complex_res] = complex_conected_points
+        df[st_complex_res][index] = complex_conected_points
+
+        # a = complex_conected_points + df[st_family_situation_res][index] + df[st_children_num_res][index] + df[st_family_close_res][index] + df[st_live_in_north_res][index]
+        # df[st_point][index] = a
+    df[st_point] = df[st_complex_res] + df[st_family_situation_res] + df[st_children_num_res] + df[st_family_close_res] + df[st_live_in_north_res]
+
 
     df_dati = df[(df[st_eat_coser]==st_yes) & (df[st_prire]==st_yes)
         & (df[st_drive_shbat]==st_no) & (df[st_school]==st_religes_school)]
@@ -210,5 +216,6 @@ def analysis(csv_input: str, res_dir: str):
 
 if __name__ == '__main__':
     csv = r'C:\work_space\temp\for_amalia2.csv'
+    # csv = r'C:\work_space\temp\test.csv'
     output_dir = r'C:\work_space\temp\t3'
     analysis(csv, output_dir)
