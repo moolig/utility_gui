@@ -242,7 +242,8 @@ def bruth_forth(big_image, cropped_image):
     gray_big_image = cv.imread(big_image, cv.IMREAD_GRAYSCALE)
     gray_cropped_image = cv.imread(cropped_image, cv.IMREAD_GRAYSCALE)
 
-    w, h = gray_cropped_image.shape
+    # w, h = gray_cropped_image.shape
+    w, h = gray_big_image.shape
 
     cropped_bm = im_to_binary_im(gray_cropped_image, 3)
     big_bm = im_to_binary_im(gray_big_image, 5)
@@ -262,60 +263,38 @@ def bruth_forth(big_image, cropped_image):
 
     method = cv.TM_CCOEFF_NORMED
 
-    scale = 1.1  # percent of original size
-    threshold = 0.7
+    scale = 0.9  # percent of original size
+    threshold = 3
     glob_max_val = 0
     res_rotate = 0
     res_resize = 1
 
-    resize_time = 2
+    resize_time = 20
 
-    w = int(w * scale**13)
-    h = int(h * scale**13)
-    dim = (w, h)
-    cropped_bm = cv.resize(cropped_bm, dim, interpolation=cv.INTER_AREA)
-    cropped_bm = cv.rotate(cropped_bm, cv.ROTATE_90_CLOCKWISE)
-    cropped_bm = cv.rotate(cropped_bm, cv.ROTATE_90_CLOCKWISE)
-
+    # w = int(w * scale**11)
+    # h = int(h * scale**11)
+    # dim = (w, h)
+    # big_bm = cv.resize(big_bm, dim, interpolation=cv.INTER_AREA)
 
     for rsize in range(1,resize_time):
         for rotate in range(4):
             for flip in range(2):
 
-
-                # res = cv.matchTemplate(big_bm, cropped_bm, method)
-
-
                 temp_im = cropped_bm - cropped_bm.mean()
                 res1 = signal.correlate2d(big_bm, temp_im, boundary='symm', mode='same')
                 res = res1
-                y, x = np.unravel_index(np.argmax(res1), res1.shape)  # find the match
-                fig, (ax_orig, ax_template, ax_corr) = plt.subplots(3, 1,
-                                                                    figsize=(6, 15))
-
-
-
-                ax_orig.imshow(big_bm, cmap='gray')
-                ax_orig.set_title('Original')
-                ax_orig.set_axis_off()
-                ax_template.imshow(cropped_bm, cmap='gray')
-                ax_template.set_title('Template')
-                ax_template.set_axis_off()
-                ax_corr.imshow(res1, cmap='gray')
-                ax_corr.set_title('Cross-correlation')
-                ax_corr.set_axis_off()
-                ax_orig.plot(x, y, 'ro')
-                fig.show()
 
 
 
                 min_val, max_val, min_loc, max_loc = cv.minMaxLoc(res)
+                max_val = max_val/(255*128**2)
                 if max_val > glob_max_val:
                     glob_max_val = max_val
                     res_rotate = rotate
                     res_resize = rsize
                     res_max_loc = max_loc
                     res_aoi_im = cropped_bm.copy()
+                    res_video_im = big_bm.copy()
                 # print(max_val)
 
 
@@ -334,17 +313,34 @@ def bruth_forth(big_image, cropped_image):
         h = int(h * scale)
         dim = (w, h)
         # resize image
-        cropped_bm = cv.resize(cropped_bm, dim, interpolation=cv.INTER_AREA)
+        big_bm = cv.resize(big_bm, dim, interpolation=cv.INTER_AREA)
 
+
+    w_v, h_v = res_video_im.shape
+    w, h = gray_cropped_image.shape
+    # cv.rectangle(gray_big_image, res_max_loc, (res_max_loc[0] + w, res_max_loc[1] + h), (255), 1)
+
+    cv.rectangle(res_video_im, (int(res_max_loc[0] - w / 2), int(res_max_loc[1] - h / 2)),
+                 (int(res_max_loc[0] + w / 2), int(res_max_loc[1] + h / 2)), (255), 1)
+
+    x_rec_size = min(w_v, int(res_max_loc[0] + w / 2)) - max(0, int(res_max_loc[0] - w / 2))
+    y_rec_size = min(h_v, int(res_max_loc[1] + h / 2)) - max(0, int(res_max_loc[1] - h / 2))
+    rec_area = x_rec_size * y_rec_size
+
+    img3 = cv.drawMatches(res_video_im, [], res_aoi_im, [], [], None)
+    glob_max_val = glob_max_val*(rec_area/(h*w))
     if glob_max_val < threshold:
-        with open(r"C:\work_space\Temp\res\temp.txt", "a") as f:
-            # Reading form a file
+        with open(r"C:\work_space\Temp\res\unfit.txt", "a") as f:
             f.write(big_image + ':' + str(glob_max_val) + '\n')
-            w, h = res_aoi_im.shape
-            cv.rectangle(gray_big_image, res_max_loc, (res_max_loc[0] + w, res_max_loc[1] + h), (255), 1)
-            img3 = cv.drawMatches(gray_big_image, [], res_aoi_im, [], [], None)
-            plt.imshow(img3, 'gray'), plt.show()
-            cv.imwrite(os.path.join(r'C:\work_space\Temp\res', os.path.basename(big_image)), img3)
+            # Reading form a file
+            # plt.imshow(img3, 'gray'), plt.show()
+        cv.imwrite(os.path.join(r'C:\work_space\Temp\res\unfit', os.path.basename(big_image)), img3)
+    else:
+        with open(r"C:\work_space\Temp\res\fit.txt", "a") as f:
+            f.write(big_image + ':' + str(glob_max_val) + '\n')
+            # Reading form a file
+            # plt.imshow(img3, 'gray'), plt.show()
+        cv.imwrite(os.path.join(r'C:\work_space\Temp\res\fit', os.path.basename(big_image)), img3)
 
 
         print(glob_max_val)
@@ -355,22 +351,18 @@ def bruth_forth(big_image, cropped_image):
 
 if __name__ == '__main__':
 
-    for i in range(2,3):#(0,20458):
+    dir_path = r'C:\work_space\temp\cims_im\image'
+    aoi_ims = [f for f in os.listdir(dir_path) if '_Image.png' in f]
+
+    #for i in range(0,1126):#(0,20458):
+    for aoi_im in aoi_ims:
         try:
-            aoi_path = fr'C:\work_space\Temp\Export_29_08_23_36_19_0\{i}_Image.png'
-            video_path = fr'C:\work_space\Temp\Export_29_08_23_36_19_0\{i}_Video.png'
+            # aoi_path = fr'C:\work_space\Temp\Export_29_08_23_36_19_0\{i}_Image.png'
+            # video_path = fr'C:\work_space\Temp\Export_29_08_23_36_19_0\{i}_Video.png'
+            aoi_path = os.path.join(dir_path, aoi_im)
+            video_path = os.path.join(dir_path, aoi_im.replace('_Image', '_Video'))
             bruth_forth(video_path, aoi_path)
         except:
             with open(r"C:\work_space\Temp\res\temp.txt", "a") as f:
                 # Reading form a file
-                f.write('---' + video_path + '\n')
-
-        # sift_mach(aoi_path, video_path)
-
-    # test_from_chatgpt(video_path, aoi_path)
-    #
-    # sift_mach(aoi_path, video_path)
-    #
-    # aoi_im = cv.imread(aoi_path)
-    # video_im = cv.imread(video_path)
-    # aoi_in_video(aoi_im, video_im)
+                f.write('---' + aoi_path + '\n')
