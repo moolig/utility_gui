@@ -242,7 +242,7 @@ def bruth_forth(big_image, cropped_image):
     gray_big_image = cv.imread(big_image, cv.IMREAD_GRAYSCALE)
     gray_cropped_image = cv.imread(cropped_image, cv.IMREAD_GRAYSCALE)
 
-    # w, h = gray_cropped_image.shape
+    w_aoi, h_aoi = gray_cropped_image.shape
     w, h = gray_big_image.shape
 
     cropped_bm = im_to_binary_im(gray_cropped_image, 3)
@@ -269,12 +269,12 @@ def bruth_forth(big_image, cropped_image):
     res_rotate = 0
     res_resize = 1
 
-    resize_time = 20
+    resize_time = 10
 
-    # w = int(w * scale**11)
-    # h = int(h * scale**11)
-    # dim = (w, h)
-    # big_bm = cv.resize(big_bm, dim, interpolation=cv.INTER_AREA)
+    w = int(w * scale**5)
+    h = int(h * scale**5)
+    dim = (w, h)
+    big_bm = cv.resize(big_bm, dim, interpolation=cv.INTER_AREA)
 
     for rsize in range(1,resize_time):
         for rotate in range(4):
@@ -287,7 +287,15 @@ def bruth_forth(big_image, cropped_image):
 
 
                 min_val, max_val, min_loc, max_loc = cv.minMaxLoc(res)
-                max_val = max_val/(255*128**2)
+                max_val = max_val/(255*w_aoi*h_aoi)
+
+                x_rec_size = min(w, int(max_loc[0] + w_aoi / 2)) - max(0, int(max_loc[0] - w_aoi / 2))
+                y_rec_size = min(h, int(max_loc[1] + h_aoi / 2)) - max(0, int(max_loc[1] - h_aoi / 2))
+                rec_area = x_rec_size * y_rec_size
+
+
+                max_val = max_val * (rec_area / (h_aoi * w_aoi))
+
                 if max_val > glob_max_val:
                     glob_max_val = max_val
                     res_rotate = rotate
@@ -323,12 +331,12 @@ def bruth_forth(big_image, cropped_image):
     cv.rectangle(res_video_im, (int(res_max_loc[0] - w / 2), int(res_max_loc[1] - h / 2)),
                  (int(res_max_loc[0] + w / 2), int(res_max_loc[1] + h / 2)), (255), 1)
 
-    x_rec_size = min(w_v, int(res_max_loc[0] + w / 2)) - max(0, int(res_max_loc[0] - w / 2))
-    y_rec_size = min(h_v, int(res_max_loc[1] + h / 2)) - max(0, int(res_max_loc[1] - h / 2))
-    rec_area = x_rec_size * y_rec_size
+    # x_rec_size = min(w_v, int(res_max_loc[0] + w / 2)) - max(0, int(res_max_loc[0] - w / 2))
+    # y_rec_size = min(h_v, int(res_max_loc[1] + h / 2)) - max(0, int(res_max_loc[1] - h / 2))
+    # rec_area = x_rec_size * y_rec_size
 
     img3 = cv.drawMatches(res_video_im, [], res_aoi_im, [], [], None)
-    glob_max_val = glob_max_val*(rec_area/(h*w))
+    # glob_max_val = glob_max_val*(rec_area/(h*w))
     if glob_max_val < threshold:
         with open(r"C:\work_space\Temp\res\unfit.txt", "a") as f:
             f.write(big_image + ':' + str(glob_max_val) + '\n')
