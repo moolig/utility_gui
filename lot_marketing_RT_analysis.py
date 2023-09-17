@@ -272,8 +272,7 @@ def analysis(csv_input: str, res_dir: str):
             df[st_res_complex_else][index] = 1
 
         df[st_res_complex][index] = min(4, complex_conected_points)
-        # a = complex_conected_points + df[st_family_situation_res][index] + df[st_res_child_num][index] + df[st_res_family_in_village][index] + df[st_live_in_north_res][index]
-        # df[st_point][index] = a
+
     df[st_res_tot] = df[st_res_complex] + df[st_res_child_num] + df[st_res_family_in_village] + df[st_res_gup_age] + df[st_res_yong_no_child] + df[st_res_age]
 
 
