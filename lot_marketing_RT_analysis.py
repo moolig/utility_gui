@@ -1,6 +1,7 @@
 import os
 import pandas as pd
 import pygsheets
+import numpy as np
 
 
 st_yes = 'כן'
@@ -31,7 +32,7 @@ st_eat_coser = 'האם המטבח בביתכם כשר?'
 st_prire = 'האם אתם שותפים באורח קבע בתפילות שחרית בשבתות בבית כנסת?'
 st_drive_shbat = 'האם אתם נוסעים בשבת?'
 st_school = 'לאיזה זרם חינוכי אתם שולחים או שלחתם את ילדכם?'
-st_live_in_goln = '(האם אחד מבני הזוג הוא בן הגולן (גר בגולן חמש שנים ומעלה'
+
 st_live_in_north = 'האם אתם תושבים בהווה של אחת מהמועצות הבאות: גולן, קצרין, קריית שמונה, מטולה, חצור הגלילית, ראש פינה, יסוד המעלה, גליל עליון, מבואות חרמון, מרום גליל'
 st_live_in_north_res = 'זיקה גאוגרפית'
 st_is_family = 'האם הינך קרוב משפחה מדרגה ראשונה של בעלי מגרש ברמת טראמפ?'
@@ -62,6 +63,12 @@ st_complex_school_or_frame = 'מוסד ארגוני או חינוכי מעורב
 st_ather_frames = 'מסגרות משותפות אחרות'
 # 'האם אתם עוסקים בהתנדבות כלשהי או לוקחים תפקיד פעיל בקהילה אליה אתם משתייכים? פרטו בקצרה',
 st_complex_res = 'זיקה למעורב'
+st_live_in_goln = 'האם אחד מבני הזוג הינו "בן גולן" כהגדרתו במסמך זה: מקום מגוריו הקבוע במשך שש שנים ברציפות במהלך חייו היה בתחום שיפוט מועצה אזורית גולן?'
+
+st_id1 = 'מספר ת.ז. מועמד 1'
+st_id2 = 'מספר ת.ז. מועמד 2'
+
+
 # 'אסמכתא לתשלום דמי טיפול על סך 300 ש"ח בהעברה בנקאית לאגודה קהילתית רמת טראמפ בנק לאומי, סניף 732, חשבון 10215600/08',
 # 'ספחי ת.ז',
 # 'אישור תושבות, או צילום של תשלום ארנונה על שימכם עם תאריך עדכני, או חוזה שכירות (למגורים בהווה באחת המועצות הצפוניות שצויינו מעלה)',
@@ -198,11 +205,12 @@ def analysis(csv_input: str, res_dir: str):
 
     df = df.reset_index()  # make sure indexes pair with number of rows
 
+    ids = np.concatenate((df[st_id1], df[st_id2]), axis=0)
+    u, c = np.unique(ids, return_counts=True)
+    dup = u[c > 1]
+    print(dup)
 
     for index, row in df.iterrows():
-        # if row[st_live_in_goln] == st_yes or row[st_live_in_north] == st_yes:
-        #     df[st_live_in_north_res] = 1
-
         if row[st_is_family] == st_is_parent:
             df[st_res_family_in_village][index] = 4
         elif row[st_is_family] == st_is_brother:
@@ -275,6 +283,8 @@ def analysis(csv_input: str, res_dir: str):
 
     df[st_res_tot] = df[st_res_complex] + df[st_res_child_num] + df[st_res_family_in_village] + df[st_res_gup_age] + df[st_res_yong_no_child] + df[st_res_age]
 
+    df = df.sort_values(by=st_live_in_goln)
+    df = df.sort_values(by=st_res_tot, ascending=False)
 
     # df_dati = df[(df[st_eat_coser]==st_yes) & (df[st_prire]==st_yes)
     #     & (df[st_drive_shbat]==st_no) & (df[st_school]==st_religes_school)]
