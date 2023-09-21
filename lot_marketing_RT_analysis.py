@@ -3,6 +3,8 @@ import pandas as pd
 import pygsheets
 import numpy as np
 
+from openpyxl.styles import PatternFill
+
 
 st_yes = 'כן'
 st_no = 'לא'
@@ -189,6 +191,24 @@ def write_to_gsheet(service_file_path, spreadsheet_id, sheet_name, data_df):
     wks_write.set_dataframe(data_df, (1,1), encoding='utf-8', fit=True)
     wks_write.frozen_rows = 1
 
+def list_to_int_list(list_):
+    ret_val = []
+    for i in list_:
+        if type(i)==int:
+            ret_val.append(i)
+        else:
+            ret_val.append(0)
+    return ret_val
+
+
+def list_to_str_list(list_):
+    ret_val = []
+    for i in list_:
+        if type(i)==str:
+            ret_val.append(i)
+        else:
+            ret_val.append('0')
+    return ret_val
 def analysis(csv_input: str, res_dir: str):
     # pin_filed = 'סיסמה'
     # point_filed = 'Score'
@@ -204,11 +224,16 @@ def analysis(csv_input: str, res_dir: str):
     df = add_columns(df)
 
     df = df.reset_index()  # make sure indexes pair with number of rows
+    df.fillna('0', inplace = True)
 
-    ids = np.concatenate((df[st_id1], df[st_id2]), axis=0)
+    ids = np.concatenate((list_to_int_list(df[st_id1]), list_to_int_list(df[st_id2])), axis=0)
     u, c = np.unique(ids, return_counts=True)
     dup = u[c > 1]
     print(dup)
+    with open(os.path.join(output_dir, 'double_ids.txt'), 'w') as f:
+        f.write(str(dup))
+
+
 
     for index, row in df.iterrows():
         if row[st_is_family] == st_is_parent:
@@ -221,13 +246,13 @@ def analysis(csv_input: str, res_dir: str):
         else:
             df[st_res_child_num][index] = int(row[st_children_num])
 
-        if type(row[st_relevant_age]) == str:
+        if row[st_relevant_age] is not '0':
             df[st_res_gup_age][index] = len(str(row[st_relevant_age]).split(','))
 
-        if row[st_age] == '50+' and row[st_is_family] != st_is_parent:
+        if '50+' in row[st_age]  and row[st_is_family] != st_is_parent:
             df[st_res_age][index] = 3
 
-        if '35' in row[st_family_situation]:
+        if type(row[st_family_situation])==str and '35' in row[st_family_situation]:
             df[st_res_yong_no_child][index] = 3
 
 
@@ -283,8 +308,10 @@ def analysis(csv_input: str, res_dir: str):
 
     df[st_res_tot] = df[st_res_complex] + df[st_res_child_num] + df[st_res_family_in_village] + df[st_res_gup_age] + df[st_res_yong_no_child] + df[st_res_age]
 
-    df = df.sort_values(by=st_live_in_goln)
-    df = df.sort_values(by=st_res_tot, ascending=False)
+    # df = df.sort_values(by=st_live_in_goln)
+    # df = df.sort_values(by=st_res_tot, ascending=False)
+    df = df.sort_values(by=[st_res_tot, st_live_in_goln], ascending = [False, True])
+
 
     # df_dati = df[(df[st_eat_coser]==st_yes) & (df[st_prire]==st_yes)
     #     & (df[st_drive_shbat]==st_no) & (df[st_school]==st_religes_school)]
@@ -295,14 +322,36 @@ def analysis(csv_input: str, res_dir: str):
     df_med_t = pd.merge(df, df_dati, indicator=True, how='outer').query('_merge=="left_only"').drop('_merge', axis=1)
     df_med = pd.merge(df_med_t, df_chilony, indicator=True, how='outer').query('_merge=="left_only"').drop('_merge', axis=1)
 
-    # create a excel writer object
-    with pd.ExcelWriter(r"C:\work_space\temp\test.xlsx") as writer:
+    highlight_fill = PatternFill(start_color='FFFF00', end_color='FFFF00', fill_type='solid')
 
+    st_ress = [ st_res_complex, st_res_complex_else, st_res_complex_school,
+    st_res_complex_school_child, st_res_complex_school_parents,  st_res_complex_grow_in,
+    st_res_complex_couple, st_res_complex_village, st_res_gup_age,
+    st_res_child_num, st_res_age, st_res_yong_no_child,
+    st_res_family_in_village, st_res_type, st_res_tot]
+
+    column_numbers = [df.columns.get_loc(i) + 1 for i in st_ress]
+
+    # create a excel writer object
+    sheets = {'dati':df_dati, 'chilony': df_chilony, 'mix': df_med}
+    with pd.ExcelWriter(os.path.join(res_dir, 'test.xlsx')) as writer:
         # use to_excel function and specify the sheet_name and index
         # to store the dataframe in specified sheet
-        df_dati.to_excel(writer, sheet_name="dati", index=False)
-        df_chilony.to_excel(writer, sheet_name="chilony", index=False)
-        df_med.to_excel(writer, sheet_name="med", index=False)
+        # df_dati.to_excel(writer, sheet_name="dati", index=False)
+        # df_chilony.to_excel(writer, sheet_name="chilony", index=False)
+        # df_med.to_excel(writer, sheet_name="mix", index=False)
+        #
+        for sheet_name, sheet in sheets.items():
+            sheet.to_excel(writer, sheet_name=sheet_name, index=False)
+            for row_index, row in df.iterrows():
+                # if row[df.columns.get_loc(st_id1)] in dup or row[df.columns.get_loc(st_id2)] in dup:
+                #     for cell in row:
+                #         cell.fill = highlight_fill
+                for column_number in column_numbers:
+                    cell = writer.book[sheet_name].cell(row=row_index + 2, column=column_number)  # Add 2 to row_index to account for header row
+                    cell.fill = highlight_fill
+        # writer.save()
+        # writer.close()
 
     # service_file_path = 'https://docs.google.com/spreadsheets/d/1RMWPKMxsd1z3Mopt39nmvap1HZFlv-Uz-HRgsaGC778/edit#gid=0'
     # spreadsheet_id = 1
@@ -330,7 +379,7 @@ def analysis(csv_input: str, res_dir: str):
 
 
 if __name__ == '__main__':
-    csv = r'C:\work_space\temp2\t.xlsx'
+    csv = r'C:\work_space\temp2\t2.xlsx'
     # csv = r'C:\work_space\temp\test.csv'
     output_dir = r'C:\work_space\temp\t3'
     analysis(csv, output_dir)
