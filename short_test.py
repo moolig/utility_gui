@@ -1,26 +1,68 @@
 import numpy as np
 import cv2 as cv
-import os
 from matplotlib import pyplot as plt
+from scipy.signal import savgol_filter
+from scipy.signal import argrelextrema
+from scipy import ndimage
+
+from scipy import signal
+from scipy import datasets
+from numpy.fft import fft2, ifft2
+
+import os
 
 
 
 def find_circle_radius_in_image(im_path, min_radius=10, max_radius=200):
-    from skimage.transform import hough_circle, hough_circle_peaks
-    from skimage.feature import canny
-
     gray = cv.imread(im_path, cv.IMREAD_GRAYSCALE)
-    edges = canny(gray, sigma=3, low_threshold=10, high_threshold=50)
+    h, w = gray.shape
+    # gray = im_to_binary_im(gray, 3)
+    #
+    #
+    # kernel = np.ones((5, 5), np.uint8)
+    # gray = cv.dilate(gray, kernel, iterations=2)
+    # gray = cv.erode(gray, kernel, iterations=2)
 
-    # Detect two radii
-    hough_radii = np.arange(min_radius, max_radius, 2)
-    hough_res = hough_circle(edges, hough_radii)
+    # Apply Gaussian blur to reduce noise and improve circle detection
+    blurred = cv.GaussianBlur(gray, (9, 9), 4)
 
-    # Select the most prominent 3 circles
-    accums, cx, cy, radii = hough_circle_peaks(hough_res, hough_radii,
-                                               total_num_peaks=1)
-    return radii
+    # Use the Hough Circle Transform to detect circles
+    circles1 = cv.HoughCircles(
+        blurred, cv.HOUGH_GRADIENT, dp=1, minDist=20,
+        param1=50, param2=50, minRadius=min_radius, maxRadius=max_radius
+    )
 
+    circles = cv.HoughCircles(
+        blurred, cv.HOUGH_GRADIENT_ALT, dp=1.5, minDist=20,
+        param1=50, param2=0.8, minRadius=int(h/20), maxRadius=max_radius
+    )
+
+    circles3 = cv.HoughCircles(
+        blurred, cv.HOUGH_GRADIENT, dp=1, minDist=50,
+        param1=50, param2=50, minRadius=40, maxRadius=max_radius
+    )
+
+    if circles is not None:
+        # Convert circle coordinates to integers
+        circles = np.uint16(np.around(circles))
+
+        cimg = cv.cvtColor(blurred, cv.COLOR_GRAY2BGR)
+        for i in circles[0, :]:
+            # draw the outer circle
+            cv.circle(cimg, (i[0], i[1]), i[2], (0, 255, 0), 2)
+            # draw the center of the circle
+            cv.circle(cimg, (i[0], i[1]), 2, (0, 0, 255), 3)
+        # Initialize a list to store circle radii
+        radii = []
+
+        # Loop through detected circles and extract radii
+        for circle in circles[0, :]:
+            center_x, center_y, radius = circle[0], circle[1], circle[2]
+            radii.append(radius)
+
+        return radii
+    else:
+        return []
 
 
 
@@ -67,6 +109,11 @@ def im_to_binary_im(video_im, k):
 
 def image_to_edge_im(img):
     edges = cv.Canny(img, 100, 200)
+    # plt.subplot(121), plt.imshow(img, cmap='gray')
+    # plt.title('Original Image'), plt.xticks([]), plt.yticks([])
+    # plt.subplot(122), plt.imshow(edges, cmap='gray')
+    # plt.title('Edge Image'), plt.xticks([]), plt.yticks([])
+    # plt.show()
     return edges
 
 
@@ -88,18 +135,6 @@ def show_im(img, aoi, max_loc, res, w, h):
 
 
     plt.show()
-
-
-def mse(imageA, imageB):
-    # the 'Mean Squared Error' between the two images is the
-    # sum of the squared difference between the two images;
-    # NOTE: the two images must have the same dimension
-    err = np.sum((imageA.astype("float") - imageB.astype("float")) ** 2)
-    err /= float(imageA.shape[0] * imageA.shape[1])
-
-    # return the MSE, the lower the error, the more "similar"
-    # the two images are
-    return err
 
 
 def brute_force(big_image, cropped_image, res_root=None, threshold=3.0, start_scale=1):
@@ -164,10 +199,15 @@ def brute_force(big_image, cropped_image, res_root=None, threshold=3.0, start_sc
     big_bm = cv.copyMakeBorder(big_bm, int(h_aoi / 4), int(h_aoi / 4), int(w_aoi / 4), int(w_aoi / 4),
                                                                                  cv.BORDER_REPLICATE)
 
+    # gray_big_image = cv.rotate(gray_big_image, cv.ROTATE_180)
+
 
     for rotate in range(4):
         for flip in range(2):
 
+            # cv.imwrite(r'C:\work_space\Temp\por_utc0380_3f_from_atsiq_050923_res\test\aoi2.jpg', gray_aoi_image)
+            # cv.imwrite(r'C:\work_space\Temp\por_utc0380_3f_from_atsiq_050923_res\test\video2.jpg', gray_big_image)
+            # res = cv.matchTemplate(gray_big_image, gray_aoi_image, cv.TM_CCOEFF)
             res = cv.matchTemplate(big_bm, aoi_bm, cv.TM_CCOEFF)
 
             min_val, max_val, min_loc, max_loc = cv.minMaxLoc(res)
@@ -178,6 +218,10 @@ def brute_force(big_image, cropped_image, res_root=None, threshold=3.0, start_sc
                 res_rgb_video_im = rgb_video_im
                 res_max_loc = max_loc
                 res_video_im = gray_big_image.copy()
+
+            # print(max_val, ' , ', max_loc)
+            # show_im(gray_big_image, gray_aoi_image, max_loc, res, w_aoi, h_aoi)
+            # show_im(big_bm, aoi_bm, max_loc, res, w_aoi, h_aoi)
 
             big_bm = cv.flip(big_bm, 0)
             gray_big_image = cv.flip(gray_big_image, 0)
@@ -193,30 +237,13 @@ def brute_force(big_image, cropped_image, res_root=None, threshold=3.0, start_sc
     if res_root is not None:
         w_v, h_v = res_video_im.shape
 
+        # cv.rectangle(res_video_im, (int(res_max_loc[0] - w_aoi / 2), int(res_max_loc[1] - h_aoi / 2)),
+        #              (int(res_max_loc[0] + w_aoi / 2), int(res_max_loc[1] + h_aoi / 2)), (255), 1)
+
         top_left = res_max_loc
         bottom_right = (top_left[0] + w_aoi, top_left[1] + h_aoi)
 
         cv.rectangle(res_video_im, top_left, bottom_right, (255), 1)
-
-
-        res_im = res_video_im[max(top_left[1], int(h_aoi / 4)):\
-                              min(bottom_right[1], h_v-int(h_aoi / 4)), \
-                             max(top_left[0], int(h_aoi / 4)): \
-                             min(bottom_right[0], h_v - int(h_aoi / 4))]
-
-        ref_aoi = gray_aoi_image[max(0, int(h_aoi / 4) - top_left[1]):\
-                              h_aoi - max(0,  -1*(h_v-int(h_aoi / 4) - bottom_right[1])), \
-                             max(0, int(w_aoi / 4) - top_left[0]): \
-                             w_aoi - max(0, -1*(h_v - int(h_aoi / 4) - bottom_right[0] ))]
-
-        a = mse(res_im, ref_aoi)
-
-        res_im_bm = im_to_binary_im(res_im, 3)
-        ref_aoi_bm = im_to_binary_im(ref_aoi, 3)
-        b = mse(res_im_bm, ref_aoi_bm)
-
-
-
 
         img3 = cv.drawMatches(res_video_im, [], gray_aoi_image, [], [], None)
         img4 = cv.drawMatches(img3, [], res_video_im[top_left[1]:bottom_right[1], top_left[0]:bottom_right[0]], [], [], None)
@@ -224,8 +251,8 @@ def brute_force(big_image, cropped_image, res_root=None, threshold=3.0, start_sc
         # cv.rectangle(res_rgb_video_im, (int((res_max_loc[0] - w / 2)*(orig_w_v/w_v)), int((res_max_loc[1] - h / 2)*(orig_h_v/h_v))),
         #              (int((res_max_loc[0] + w / 2)*(orig_w_v/w_v)), int((res_max_loc[1] + h / 2)*(orig_h_v/h_v))), (255,0,0), 1)
 
-        top_left = (int(top_left[0]*(orig_h_v/h_v)), int(top_left[1]*(orig_w_v/w_v)))
-        bottom_right = (int(top_left[0] + w_aoi*(orig_h_v/h)), int(top_left[1] + h_aoi*(orig_h_v/h)))
+        top_left = (int(top_left[0]*(orig_h_v/h_v)), int(top_left[1]*(orig_h_v/h_v)))
+        bottom_right = (top_left[0] + w_aoi, top_left[1] + h_aoi)
 
         cv.rectangle(res_rgb_video_im, top_left, bottom_right, (255,0,0), 1)
 
@@ -235,7 +262,7 @@ def brute_force(big_image, cropped_image, res_root=None, threshold=3.0, start_sc
             str_results = 'fit'
 
         with open(os.path.join(res_root, f"{str_results}.txt"), "a") as f:
-            f.write(f'{big_image} : {str(glob_max_val)} , a:{a}, b:{b} \n')
+            f.write(big_image + ':' + str(glob_max_val) + '\n')
             # Reading form a file
             # plt.imshow(img3, 'gray'), plt.show()
         cv.imwrite(os.path.join(res_root, f'{str_results}', os.path.basename(big_image)), img4)
@@ -253,8 +280,8 @@ def get_best_magnitude_from_im(aoi_path):
 
     video_path = aoi_path.replace('_Image', '_Video')
 
-    circle_rad_list_video = find_circle_radius_in_image(video_path, min_radius=40 , max_radius=100)
-    circle_rad_list_aoi = find_circle_radius_in_image(aoi_path, min_radius=20, max_radius=60)
+    circle_rad_list_video = find_circle_radius_in_image(video_path)
+    circle_rad_list_aoi = find_circle_radius_in_image(aoi_path)
 
     if len(circle_rad_list_aoi) and len(circle_rad_list_video):
         average = sum(circle_rad_list_video) / len(circle_rad_list_video)
@@ -296,78 +323,78 @@ def run_bruth_forth_on_dir(dir_path, test_magnitude_im, threshold=5):
 if __name__ == '__main__':
 
 
-    test_magnitude_im = r'145_Image.png'
-    dir_path = r'C:\work_space\Temp\por_utc0490_2f_from_atsiq_050923'
+    test_magnitude_im = r'325_Image.png'
+    dir_path = r'C:\work_space\Temp\por_utc0380_3f_from_atsiq_050923'
 
     run_bruth_forth_on_dir(dir_path, test_magnitude_im, 25)
 
 
 
-    #
-    # from matplotlib import pyplot as plt
-    #
-    #
-    # aoi = cv.imread(r'C:\work_space\Temp\por_utc0380_3f_from_atsiq_050923\126_Image.png', cv.IMREAD_GRAYSCALE)
-    # sh, sw = aoi.shape
-    # video = cv.imread(r'C:\work_space\Temp\por_utc0380_3f_from_atsiq_050923\126_Video.png', cv.IMREAD_GRAYSCALE)
-    #
-    glob_max_val = brute_force( r'C:\work_space\Temp\por_utc0490_2f_from_atsiq_050923\123_Video.png', r'C:\work_space\Temp\por_utc0490_2f_from_atsiq_050923\123_Image.png', fr'C:\work_space\Temp\por_utc0380_3f_from_atsiq_050923_res\test', threshold=3, start_scale=0.5945945945945946)
-    # h, w = video.shape
-    # f = 0.71
-    # video = cv.resize(video, (int(f*w), int(f*h)), interpolation=cv.INTER_AREA)
 
-    #
-    # video = cv.rotate(video, cv.ROTATE_180)
-    # # video = cv.flip(video, 0)
-    #
-    # ped_video_reflect = cv.copyMakeBorder(video, int(sh / 4), int(sh / 4), int(sw / 4), int(sw / 4),
-    #                                       cv.BORDER_REPLICATE)
-    #
-    # lh, lw = ped_video_reflect.shape
-    #
-    # ped_aoi = cv.copyMakeBorder(aoi, int((lh-sh) / 2), int((lh-sh) / 2), int((lh-sh) / 2), int((lh-sh) / 2),
-    #                                       cv.BORDER_CONSTANT,value=0)
-    #
-    # cv.imwrite(r'C:\work_space\Temp\test\ped_video_resize_gray.png', ped_video_reflect)
-    # print('end')
-    #
-    # w, h = aoi.shape[::-1]
-    # # All the 6 methods for comparison in a list
-    # methods = ['cv.TM_CCOEFF']#, 'cv.TM_CCOEFF_NORMED','cv.TM_CCORR_NORMED']
-    #
-    # for meth in methods:
-    #     img = ped_video_reflect.copy()
-    #     method = eval(meth)
-    #     # Apply template Matching
-    #
-    #     cv.imwrite(r'C:\work_space\Temp\por_utc0380_3f_from_atsiq_050923_res\test\aoi1.jpg', aoi)
-    #     cv.imwrite(r'C:\work_space\Temp\por_utc0380_3f_from_atsiq_050923_res\test\video1.jpg', img)
-    #
-    #
-    #     res = cv.matchTemplate(img, aoi, method)
-    #     min_val, max_val, min_loc, max_loc = cv.minMaxLoc(res)
-    #
-    #
-    #
-    #     # If the method is TM_SQDIFF or TM_SQDIFF_NORMED, take minimum
-    #     if method in [cv.TM_SQDIFF, cv.TM_SQDIFF_NORMED]:
-    #         top_left = min_loc
-    #         print(min_val, ", ", top_left)
-    #     else:
-    #         top_left = max_loc
-    #         print(max_val, ", ", top_left)
-    #     bottom_right = (top_left[0] + w, top_left[1] + h)
-    #     cv.rectangle(img, top_left, bottom_right, 255, 2)
-    #     plt.subplot(131), plt.imshow(res, cmap='gray')
-    #     plt.title('Matching Result'), plt.xticks([]), plt.yticks([])
-    #     plt.subplot(132), plt.imshow(img, cmap='gray')
-    #     plt.title('Detected Point'), plt.xticks([]), plt.yticks([])
-    #
-    #     plt.subplot(133), plt.imshow(ped_aoi, cmap='gray')
-    #     plt.title('aoi'), plt.xticks([]), plt.yticks([])
-    #
-    #     plt.suptitle(meth)
-    #     plt.show()
+    from matplotlib import pyplot as plt
+
+
+    aoi = cv.imread(r'C:\work_space\Temp\por_utc0380_3f_from_atsiq_050923\126_Image.png', cv.IMREAD_GRAYSCALE)
+    sh, sw = aoi.shape
+    video = cv.imread(r'C:\work_space\Temp\por_utc0380_3f_from_atsiq_050923\126_Video.png', cv.IMREAD_GRAYSCALE)
+
+    glob_max_val = brute_force( r'C:\work_space\Temp\por_utc0380_3f_from_atsiq_050923\153_Video.png', r'C:\work_space\Temp\por_utc0380_3f_from_atsiq_050923\153_Image.png', fr'C:\work_space\Temp\por_utc0380_3f_from_atsiq_050923_res\test', threshold=3, start_scale=0.71)
+    h, w = video.shape
+    f = 0.71
+    video = cv.resize(video, (int(f*w), int(f*h)), interpolation=cv.INTER_AREA)
+
+
+    video = cv.rotate(video, cv.ROTATE_180)
+    # video = cv.flip(video, 0)
+
+    ped_video_reflect = cv.copyMakeBorder(video, int(sh / 4), int(sh / 4), int(sw / 4), int(sw / 4),
+                                          cv.BORDER_REPLICATE)
+
+    lh, lw = ped_video_reflect.shape
+
+    ped_aoi = cv.copyMakeBorder(aoi, int((lh-sh) / 2), int((lh-sh) / 2), int((lh-sh) / 2), int((lh-sh) / 2),
+                                          cv.BORDER_CONSTANT,value=0)
+
+    cv.imwrite(r'C:\work_space\Temp\test\ped_video_resize_gray.png', ped_video_reflect)
+    print('end')
+
+    w, h = aoi.shape[::-1]
+    # All the 6 methods for comparison in a list
+    methods = ['cv.TM_CCOEFF']#, 'cv.TM_CCOEFF_NORMED','cv.TM_CCORR_NORMED']
+
+    for meth in methods:
+        img = ped_video_reflect.copy()
+        method = eval(meth)
+        # Apply template Matching
+
+        cv.imwrite(r'C:\work_space\Temp\por_utc0380_3f_from_atsiq_050923_res\test\aoi1.jpg', aoi)
+        cv.imwrite(r'C:\work_space\Temp\por_utc0380_3f_from_atsiq_050923_res\test\video1.jpg', img)
+
+
+        res = cv.matchTemplate(img, aoi, method)
+        min_val, max_val, min_loc, max_loc = cv.minMaxLoc(res)
+
+
+
+        # If the method is TM_SQDIFF or TM_SQDIFF_NORMED, take minimum
+        if method in [cv.TM_SQDIFF, cv.TM_SQDIFF_NORMED]:
+            top_left = min_loc
+            print(min_val, ", ", top_left)
+        else:
+            top_left = max_loc
+            print(max_val, ", ", top_left)
+        bottom_right = (top_left[0] + w, top_left[1] + h)
+        cv.rectangle(img, top_left, bottom_right, 255, 2)
+        plt.subplot(131), plt.imshow(res, cmap='gray')
+        plt.title('Matching Result'), plt.xticks([]), plt.yticks([])
+        plt.subplot(132), plt.imshow(img, cmap='gray')
+        plt.title('Detected Point'), plt.xticks([]), plt.yticks([])
+
+        plt.subplot(133), plt.imshow(ped_aoi, cmap='gray')
+        plt.title('aoi'), plt.xticks([]), plt.yticks([])
+
+        plt.suptitle(meth)
+        plt.show()
 
 
 

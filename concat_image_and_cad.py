@@ -21,6 +21,24 @@ def channel_concat_image_and_cad(input_im_dir: str, input_cad_dir: str,  output_
         cv2.imwrite(os.path.join(output_dir, f'{file_name}_merge.png'), image_merged)
 
 
+
+def channel_concat_rgb_image_and_cad(input_im_dir: str, input_cad_dir: str,  output_dir):
+    if not os.path.isdir(output_dir):
+        os.mkdir(output_dir)
+    im_files = os.listdir(input_im_dir)
+
+    file_names = [im_file.split('_')[0] for im_file in im_files if '.png' in im_file]
+    for file_name in file_names:
+        image = cv2.imread(os.path.join(input_im_dir, f'{file_name}_Image.png'), cv2.IMREAD_COLOR)
+        cad = cv2.imread(os.path.join(input_cad_dir, f'{file_name}_Cad.png'), cv2.IMREAD_GRAYSCALE)
+
+        image_merged = cv2.merge((image, image, (cad/2).astype('uint8')))
+        # image_merged = cv2.merge((image, image, cad))
+
+        cv2.imwrite(os.path.join(output_dir, f'{file_name}_merge.png'), image_merged)
+
+
+
 def concat_image_and_cad(input_im_dir: str, input_cad_dir: str,  output_dir):
     if not os.path.isdir(output_dir):
         os.mkdir(output_dir)

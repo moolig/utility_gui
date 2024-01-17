@@ -6,11 +6,11 @@ def remove_not_in_both_folder(dirA: str, dirB: str):
     remove from dirB if not in dirA
     '''
     onlyfiles = [f for f in os.listdir(dirA) if os.path.isfile(os.path.join(dirA, f))]
-    onlyfiles = [f.split('.')[0] for f in onlyfiles]
+    onlyfiles = [f.split('_')[0] for f in onlyfiles]
 
     onlyim = [f for f in os.listdir(dirB) if os.path.isfile(os.path.join(dirB, f))]
     for im in onlyim:
-        im_name = im.split('.')[0]
+        im_name = im.split('_')[0]
         if im_name not in onlyfiles:
             os.unlink(os.path.join(dirB, im))
 
