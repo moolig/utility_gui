@@ -10,6 +10,7 @@ st_yes = 'כן'
 st_no = 'לא'
 st_religes_school = 'ממלכתי דתי'
 st_normal_school = 'ממלכתי'
+st_mix_school = 'משלב דתיים וחילונים'
 st_more_from_3 = '3 ומעלה'
 st_is_brother = 'כן, אני אח/ות של בעל מגרש ברמת טראמפ'
 st_is_parent = 'כן, אני הורה של בעל מגרש ברמת טראמפ'
@@ -306,18 +307,29 @@ def analysis(csv_input: str, res_dir: str):
 
         df[st_res_complex][index] = min(4, complex_conected_points)
 
+        if row[st_school]==st_mix_school and \
+            row[st_is_it_complex_cople] == st_no and \
+            row[st_complex_school] == st_no and \
+            row[st_complex_child_school] == st_no:
+            df[st_school][index] = '0'
+
+
     df[st_res_tot] = df[st_res_complex] + df[st_res_child_num] + df[st_res_family_in_village] + df[st_res_gup_age] + df[st_res_yong_no_child] + df[st_res_age]
 
-    # df = df.sort_values(by=st_live_in_goln)
-    # df = df.sort_values(by=st_res_tot, ascending=False)
     df = df.sort_values(by=[st_res_tot, st_live_in_goln], ascending = [False, True])
 
 
-    # df_dati = df[(df[st_eat_coser]==st_yes) & (df[st_prire]==st_yes)
-    #     & (df[st_drive_shbat]==st_no) & (df[st_school]==st_religes_school)]
-    df_dati = df[(df[st_prire]==st_yes) & (df[st_drive_shbat]==st_no) & (df[st_school]==st_religes_school)]
+    df_dati = df[(df[st_prire]==st_yes) & (df[st_drive_shbat]==st_no) & \
+                 ((df[st_school]==st_religes_school))]
 
-    df_chilony = df[(df[st_prire]==st_no) & (df[st_drive_shbat]==st_yes) & (df[st_school] == st_normal_school)]
+    df_chilony = df[(df[st_prire]==st_no) & (df[st_drive_shbat]==st_yes) &\
+                    (df[st_school]==st_normal_school)]
+
+    # df_dati = df[(df[st_prire]==st_yes) & (df[st_drive_shbat]==st_no) & \
+    #              ((df[st_school].isin([st_religes_school, '0'])))]
+    #
+    # df_chilony = df[(df[st_prire]==st_no) & (df[st_drive_shbat]==st_yes) &\
+    #                 (df[st_school].isin([st_normal_school, '0']))]
 
     df_med_t = pd.merge(df, df_dati, indicator=True, how='outer').query('_merge=="left_only"').drop('_merge', axis=1)
     df_med = pd.merge(df_med_t, df_chilony, indicator=True, how='outer').query('_merge=="left_only"').drop('_merge', axis=1)
@@ -379,7 +391,7 @@ def analysis(csv_input: str, res_dir: str):
 
 
 if __name__ == '__main__':
-    csv = r'C:\work_space\temp2\t2.xlsx'
+    csv = r'C:\work_space\temp2\t3.xlsx'
     # csv = r'C:\work_space\temp\test.csv'
     output_dir = r'C:\work_space\temp\t3'
     analysis(csv, output_dir)
