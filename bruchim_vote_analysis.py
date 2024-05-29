@@ -84,7 +84,7 @@ def analysis(csv_input: str, res_dir: str, graph_type='pie'):
 
     df = remove_incoret_pin(df, point_filed, good_val)
     df = fusion_same_pin(df, pin_filed)
-    if(graph_type == 'piy'):
+    if(graph_type == 'pie'):
         create_graph(df, not_relevant_column, res_dir)
     elif graph_type == 'bar':
         create_column_chart(df, not_relevant_column, res_dir)
@@ -99,7 +99,73 @@ def analysis(csv_input: str, res_dir: str, graph_type='pie'):
 #     df.to_csv(os.path.join(res_dir, 'csv_output.csv'))
 
 
-if __name__ == '__main__':
-    csv = r'C:\work_space\temp\kamin_2\input.csv'
-    output_dir = r'C:\work_space\temp\kamin_2'
-    analysis(csv, output_dir, graph_type='bar')
+# if __name__ == '__main__':
+#     csv = r'C:\work_space\temp\kamin_2\input.csv'
+#     output_dir = r'C:\work_space\temp\kamin_2'
+#     analysis(csv, output_dir, graph_type='bar')
+
+
+
+
+
+import os
+import PySimpleGUI as sg
+
+
+input_csv = [
+    [
+        sg.Text("select input csv file"),
+        sg.In(size=(25, 1), enable_events=True, key="-input_file-"),
+        sg.FileBrowse(),
+    ],
+]
+
+output_folder = [
+    [
+        sg.Text("output path"),
+        sg.In(size=(25, 1), enable_events=True, key="-output_path-"),
+        sg.FolderBrowse(),
+    ],
+]
+
+graph_type_select = [
+    [
+        sg.Text("graph type"),
+        # sg.In(size=(25, 1), enable_events=True, key="-graph_type-"),
+        sg.Listbox(["pie", "bar"], size=(10, 2), key="-graph_type-"),
+    ],
+]
+
+
+layout = [
+    [
+        [sg.Column(input_csv)],
+        [sg.Column(output_folder)],
+        [sg.Column(graph_type_select)],
+        [sg.Button("RUN")]
+    ]
+]
+
+
+# Create the window
+window = sg.Window("vote analysis", layout)
+
+
+# Create an event loop
+while True:
+    event, values = window.read()
+
+
+    if event == "-input_file-":
+        input_file = values["-input_file-"]
+    if event == "-output_path-":
+        output_path = values["-output_path-"]
+
+    graph_type = values["-graph_type-"][0]
+
+    if event == "RUN":
+        analysis(input_file, output_path, graph_type=graph_type)
+    if event == sg.WIN_CLOSED:
+        break
+
+window.close()
