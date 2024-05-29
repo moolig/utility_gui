@@ -8,7 +8,7 @@ def func(pct, allvalues):
     return "{:.1f}%\n({:d})".format(pct, absolute)
 def create_graph(df, not_relevant_columns: list, save_dir: str):
     for column in df.columns:
-        if column not in not_relevant_columns :
+        if column not in not_relevant_columns:
             value_counts = df[column].value_counts()
             y = np.array(value_counts.values)
             mylabels = [idx[::-1] for idx in value_counts.index]
@@ -18,6 +18,26 @@ def create_graph(df, not_relevant_columns: list, save_dir: str):
             plt.show()
             plt.close()
 
+
+def create_column_chart(df, not_relevant_columns: list, save_dir: str):
+    for column in df.columns:
+        if column not in not_relevant_columns:
+            names_list = df[column].str.split(', ')
+            all_names = [name.strip() for sublist in names_list for name in sublist]
+            # revers name for convert Hebrew names
+            all_names = [idx[::-1] for idx in all_names]
+
+            name_counts = pd.Series(all_names).value_counts()
+            plt.figure(figsize=(10, 8))
+            name_counts.plot(kind='bar', color='skyblue')
+            plt.title('Count of Names Selected')
+            plt.xlabel('Names')
+            plt.ylabel('Count')
+            plt.xticks(rotation=90)
+            plt.tight_layout()
+            plt.savefig(os.path.join(save_dir, column + '.png'))
+            plt.show()
+            plt.close()
 
 
 
@@ -48,7 +68,7 @@ def fusion_same_pin(df, pin_filed):
     f_new = df.groupby(df[pin_filed]).aggregate(aggregation_functions)
     return f_new
 
-def analysis(csv_input: str, res_dir: str):
+def analysis(csv_input: str, res_dir: str, graph_type='pie'):
     pin_filed = 'סיסמה'
     point_filed = 'Score'#'ניקוד'
     good_val = '100 / 100'
@@ -64,7 +84,10 @@ def analysis(csv_input: str, res_dir: str):
 
     df = remove_incoret_pin(df, point_filed, good_val)
     df = fusion_same_pin(df, pin_filed)
-    create_graph(df, not_relevant_column, res_dir)
+    if(graph_type == 'piy'):
+        create_graph(df, not_relevant_column, res_dir)
+    elif graph_type == 'bar':
+        create_column_chart(df, not_relevant_column, res_dir)
     df.to_csv(os.path.join(res_dir, 'csv_output.csv'))
 
 # def analysis_from_google_sheet(url, res_dir):
@@ -79,4 +102,4 @@ def analysis(csv_input: str, res_dir: str):
 if __name__ == '__main__':
     csv = r'C:\work_space\temp\kamin_2\input.csv'
     output_dir = r'C:\work_space\temp\kamin_2'
-    analysis(csv, output_dir)
+    analysis(csv, output_dir, graph_type='bar')
