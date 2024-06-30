@@ -2,10 +2,12 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import numpy as np
 import os
+import PySimpleGUI as sg
+
 
 def func(pct, allvalues):
-    absolute = int(pct / 100.*np.sum(allvalues))
-    return "{:.1f}%\n({:d})".format(pct, absolute)
+    absolute = pct / 100.*np.sum(allvalues)
+    return "{:.1f}%\n({:.1f})".format(pct, absolute)
 def create_graph(df, not_relevant_columns: list, save_dir: str):
     for column in df.columns:
         if column not in not_relevant_columns:
@@ -75,41 +77,24 @@ def analysis(csv_input: str, res_dir: str, graph_type='pie'):
     not_relevant_column = [pin_filed, point_filed, 'Timestamp']#'חותמת זמן']
 
     df = pd.read_csv(csv_input, sep=",", encoding='utf-8')
-    print('incurrect pins:', get_incorrect_pins(df, pin_filed, point_filed, good_val))
-    print('duplicate pin:', get_duplicate_pin(df, pin_filed))
+    try:
+        print('incurrect pins:', get_incorrect_pins(df, pin_filed, point_filed, good_val))
+        print('duplicate pin:', get_duplicate_pin(df, pin_filed))
 
-    with open(os.path.join(res_dir, 'incorrect_pins.txt'), 'w') as the_file:
-        the_file.write(f'incorrect pins: {get_incorrect_pins(df, pin_filed, point_filed, good_val)}\n')
-        the_file.write(f'duplicate pin:{get_duplicate_pin(df, pin_filed)}\n')
+        with open(os.path.join(res_dir, 'incorrect_pins.txt'), 'w') as the_file:
+            the_file.write(f'incorrect pins: {get_incorrect_pins(df, pin_filed, point_filed, good_val)}\n')
+            the_file.write(f'duplicate pin:{get_duplicate_pin(df, pin_filed)}\n')
 
-    df = remove_incoret_pin(df, point_filed, good_val)
-    df = fusion_same_pin(df, pin_filed)
+        df = remove_incoret_pin(df, point_filed, good_val)
+        df = fusion_same_pin(df, pin_filed)
+    except Exception as e:
+        print(e)
     if(graph_type == 'pie'):
         create_graph(df, not_relevant_column, res_dir)
     elif graph_type == 'bar':
         create_column_chart(df, not_relevant_column, res_dir)
     df.to_csv(os.path.join(res_dir, 'csv_output.csv'))
 
-# def analysis_from_google_sheet(url, res_dir):
-#     df = pd.read_csv(url, on_bad_lines='skip')
-#     print('incurrect pins:', get_incorrect_pins(df))
-#     print('duplicate pin:', get_duplicate_pin(df))
-#     df = remove_incoret_pin(df)
-#     df = fusion_same_pin(df)
-#     df.to_csv(os.path.join(res_dir, 'csv_output.csv'))
-
-
-# if __name__ == '__main__':
-#     csv = r'C:\work_space\temp\kamin_2\input.csv'
-#     output_dir = r'C:\work_space\temp\kamin_2'
-#     analysis(csv, output_dir, graph_type='bar')
-
-
-
-
-
-import os
-import PySimpleGUI as sg
 
 
 input_csv = [
@@ -132,7 +117,7 @@ graph_type_select = [
     [
         sg.Text("graph type"),
         # sg.In(size=(25, 1), enable_events=True, key="-graph_type-"),
-        sg.Listbox(["pie", "bar"], size=(10, 2), key="-graph_type-"),
+        sg.Listbox(["pie", "bar"], size=(10, 2), key="-graph_type-", default_values=['pie']),
     ],
 ]
 
@@ -157,14 +142,23 @@ while True:
 
 
     if event == "-input_file-":
-        input_file = values["-input_file-"]
+        try:
+            input_file = values["-input_file-"]
+        except Exception as e:
+            print(e)
     if event == "-output_path-":
-        output_path = values["-output_path-"]
+        try:
+            output_path = values["-output_path-"]
+        except Exception as e:
+            print(e)
 
     graph_type = values["-graph_type-"][0]
 
     if event == "RUN":
-        analysis(input_file, output_path, graph_type=graph_type)
+        try:
+            analysis(input_file, output_path, graph_type=graph_type)
+        except Exception as e:
+            print(e)
     if event == sg.WIN_CLOSED:
         break
 
